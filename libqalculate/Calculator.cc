@@ -216,12 +216,6 @@ void calculate_proc_noproc(bool b_parse, MathStructure* mstruct) {
 }
 
 Calculator::Calculator() {
-
-#ifdef ENABLE_NLS
-	bindtextdomain (GETTEXT_PACKAGE, PACKAGE_LOCALE_DIR);
-	bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
-#endif
-
 	has_gnomevfs = -1;
 	exchange_rates_warning_issued = false;
 

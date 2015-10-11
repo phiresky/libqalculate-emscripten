@@ -89,11 +89,6 @@ dnl  --------------------------------
 
 AC_LANG([C++])
 
-PKG_CHECK_MODULES(GLIB, [
-	libxml-2.0 >= 2.3.8
-	])
-AC_SUBST(GLIB_CFLAGS)
-AC_SUBST(GLIB_LIBS)
 
 PKG_CHECK_MODULES(CLN, [ cln >= 1.2 ],
                   [have_recent_cln=yes], [have_recent_cln=no])

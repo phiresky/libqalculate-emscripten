@@ -21,11 +21,8 @@ libqalculateinclude_HEADERS = \
 
 libqalculate_la_LDFLAGS = -version-info $(QALCULATE_CURRENT):$(QALCULATE_REVISION):$(QALCULATE_AGE) -no-undefined
 
-libqalculate_la_LIBADD = \
-	@GLIB_LIBS@
 
 INCLUDES = \
 	-I../ \
 	-DPACKAGE_DATA_DIR=\""$(datadir)"\" \
-	-DPACKAGE_LOCALE_DIR=\""$(prefix)/$(DATADIRNAME)/locale"\" \
-	@GLIB_CFLAGS@
+	-DPACKAGE_LOCALE_DIR=\""$(prefix)/$(DATADIRNAME)/locale"\"
