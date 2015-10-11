@@ -226,7 +226,7 @@ class Calculator {
 
 	bool b_gnuplot_open;
 	string gnuplot_cmdline;
-	FILE *gnuplot_pipe, *calculate_pipe_r, *calculate_pipe_w, *print_pipe_r, *print_pipe_w;
+	FILE *gnuplot_pipe, *calculate_pipe_r, *calculate_pipe_w;
 	
 	bool local_to;
 	
@@ -336,7 +336,6 @@ class Calculator {
 	* @returns The result of the calculation.
 	*/
 	MathStructure calculate(string str, const EvaluationOptions &eo = default_evaluation_options, MathStructure *parsed_struct = NULL, MathStructure *to_struct = NULL, bool make_to_division = true);
-	string printMathStructureTimeOut(const MathStructure &mstruct, int msecs = 100000, const PrintOptions &op = default_print_options);
 	int testCondition(string expression);
 	//@}
 

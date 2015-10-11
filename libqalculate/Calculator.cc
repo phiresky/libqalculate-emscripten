@@ -224,21 +224,6 @@ void *calculate_proc(void *pipe) {
 	}
 	return NULL;
 }
-void *print_proc(void *pipe) {
-	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-	FILE *print_pipe = (FILE*) pipe;
-	while(true) {
-		void *x = NULL;
-		fread(&x, sizeof(void*), 1, print_pipe);
-		const MathStructure *mstruct = (const MathStructure*) x;
-		MathStructure mstruct2(*mstruct);
-		mstruct2.format();
-		CALCULATOR->tmp_print_result = mstruct2.print(CALCULATOR->tmp_printoptions);
-		CALCULATOR->b_busy = false;
-	}
-	return NULL;
-}
 
 Calculator::Calculator() {
 
@@ -373,12 +358,6 @@ Calculator::Calculator() {
 	pipe(pipe_wr);
 	calculate_pipe_r = fdopen(pipe_wr[0], "r");
 	calculate_pipe_w = fdopen(pipe_wr[1], "w");
-
-	print_thread_stopped = true;
-	pthread_attr_init(&print_thread_attr);
-	pipe(pipe_wr);
-	print_pipe_r = fdopen(pipe_wr[0], "r");
-	print_pipe_w = fdopen(pipe_wr[1], "w");
 
 }
 Calculator::~Calculator() {
@@ -2219,34 +2198,6 @@ MathStructure Calculator::calculate(string str, const EvaluationOptions &eo, Mat
 		}
 	}
 	return mstruct;
-}
-string Calculator::printMathStructureTimeOut(const MathStructure &mstruct, int msecs, const PrintOptions &po) {
-	tmp_printoptions = po;
-	saveState();
-	b_busy = true;
-	if(print_thread_stopped) {
-		pthread_create(&print_thread, &print_thread_attr, print_proc, print_pipe_r);
-		print_thread_stopped = false;
-	}
-	void *x = (void*) &mstruct;
-	fwrite(&x, sizeof(void*), 1, print_pipe_w);
-	fflush(print_pipe_w);
-	struct timespec rtime;
-	rtime.tv_sec = 0;
-	rtime.tv_nsec = 1000000;
-	while(msecs > 0 && b_busy) {
-		nanosleep(&rtime, NULL);
-		msecs -= 1;
-	}
-	if(b_busy) {
-		pthread_cancel(print_thread);
-		restoreState();
-		clearBuffers();
-		b_busy = false;
-		pthread_create(&print_thread, &print_thread_attr, print_proc, print_pipe_r);
-		tmp_print_result = _("timed out");
-	}
-	return tmp_print_result;
 }
 
 MathStructure Calculator::convert(double value, Unit *from_unit, Unit *to_unit, const EvaluationOptions &eo) {

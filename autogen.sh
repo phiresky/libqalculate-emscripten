@@ -144,8 +144,5 @@ else
   echo Skipping configure process.
 fi
 
-cd $srcdir/docs/reference
-echo "Generating API docs"
-doxygen Doxyfile
 cd $srcdir
 

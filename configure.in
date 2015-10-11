@@ -242,8 +242,6 @@ AC_OUTPUT([
   data/Makefile
   po/Makefile.in
   po-defs/Makefile
-  docs/Makefile
-  docs/reference/Makefile
   libqalculate.pc
 ])
 
