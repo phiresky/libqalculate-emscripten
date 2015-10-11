@@ -168,61 +168,50 @@ void autoConvert(const MathStructure &morig, MathStructure &mconv, const Evaluat
 	}
 }
 
-void *calculate_proc(void *pipe) {
-	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-	FILE *calculate_pipe = (FILE*) pipe;
-	while(true) {
-		bool b_parse = true;
-		fread(&b_parse, sizeof(bool), 1, calculate_pipe);
-		void *x = NULL;
-		fread(&x, sizeof(void*), 1, calculate_pipe);
-		MathStructure *mstruct = (MathStructure*) x;
-		if(b_parse) {
-			mstruct->set(_("aborted"));
-			if(CALCULATOR->tmp_parsedstruct) CALCULATOR->tmp_parsedstruct->set(_("aborted"));
-			if(CALCULATOR->tmp_tostruct) CALCULATOR->tmp_tostruct->setUndefined();
-			mstruct->set(CALCULATOR->calculate(CALCULATOR->expression_to_calculate, CALCULATOR->tmp_evaluationoptions, CALCULATOR->tmp_parsedstruct, CALCULATOR->tmp_tostruct, CALCULATOR->tmp_maketodivision));
-		} else {
-			MathStructure meval(*mstruct);
-			mstruct->set(_("aborted"));
-			meval.eval(CALCULATOR->tmp_evaluationoptions);
-			if(CALCULATOR->tmp_evaluationoptions.auto_post_conversion == POST_CONVERSION_NONE) mstruct->set(meval);
-			else autoConvert(meval, *mstruct, CALCULATOR->tmp_evaluationoptions);
-		}
-		switch(CALCULATOR->tmp_proc_command) {
-			case PROC_RPN_ADD: {
-				CALCULATOR->RPNStackEnter(mstruct, false);
-				break;
-			}
-			case PROC_RPN_SET: {
-				CALCULATOR->setRPNRegister(CALCULATOR->tmp_rpnindex, mstruct, false);
-				break;
-			}
-			case PROC_RPN_OPERATION_1: {
-				if(CALCULATOR->RPNStackSize() > 0) {
-					CALCULATOR->setRPNRegister(1, mstruct, false);
-				} else {
-					CALCULATOR->RPNStackEnter(mstruct, false);
-				}
-				break;
-			}
-			case PROC_RPN_OPERATION_2: {
-				if(CALCULATOR->RPNStackSize() > 1) {
-					CALCULATOR->deleteRPNRegister(1);
-				}
-				if(CALCULATOR->RPNStackSize() > 0) {
-					CALCULATOR->setRPNRegister(1, mstruct, false);
-				} else {
-					CALCULATOR->RPNStackEnter(mstruct, false);
-				}
-				break;
-			}
-			case PROC_NO_COMMAND: {}
-		}
-		CALCULATOR->b_busy = false;
+void calculate_proc_noproc(bool b_parse, MathStructure* mstruct) {
+	if(b_parse) {
+		mstruct->set(_("aborted"));
+		if(CALCULATOR->tmp_parsedstruct) CALCULATOR->tmp_parsedstruct->set(_("aborted"));
+		if(CALCULATOR->tmp_tostruct) CALCULATOR->tmp_tostruct->setUndefined();
+		mstruct->set(CALCULATOR->calculate(CALCULATOR->expression_to_calculate, CALCULATOR->tmp_evaluationoptions, CALCULATOR->tmp_parsedstruct, CALCULATOR->tmp_tostruct, CALCULATOR->tmp_maketodivision));
+	} else {
+		MathStructure meval(*mstruct);
+		mstruct->set(_("aborted"));
+		meval.eval(CALCULATOR->tmp_evaluationoptions);
+		if(CALCULATOR->tmp_evaluationoptions.auto_post_conversion == POST_CONVERSION_NONE) mstruct->set(meval);
+		else autoConvert(meval, *mstruct, CALCULATOR->tmp_evaluationoptions);
 	}
-	return NULL;
+	switch(CALCULATOR->tmp_proc_command) {
+		case PROC_RPN_ADD: {
+			CALCULATOR->RPNStackEnter(mstruct, false);
+			break;
+		}
+		case PROC_RPN_SET: {
+			CALCULATOR->setRPNRegister(CALCULATOR->tmp_rpnindex, mstruct, false);
+			break;
+		}
+		case PROC_RPN_OPERATION_1: {
+			if(CALCULATOR->RPNStackSize() > 0) {
+				CALCULATOR->setRPNRegister(1, mstruct, false);
+			} else {
+				CALCULATOR->RPNStackEnter(mstruct, false);
+			}
+			break;
+		}
+		case PROC_RPN_OPERATION_2: {
+			if(CALCULATOR->RPNStackSize() > 1) {
+				CALCULATOR->deleteRPNRegister(1);
+			}
+			if(CALCULATOR->RPNStackSize() > 0) {
+				CALCULATOR->setRPNRegister(1, mstruct, false);
+			} else {
+				CALCULATOR->RPNStackEnter(mstruct, false);
+			}
+			break;
+		}
+		case PROC_NO_COMMAND: {}
+	}
+	CALCULATOR->b_busy = false;
 }
 
 Calculator::Calculator() {
@@ -351,14 +340,6 @@ Calculator::Calculator() {
 	b_busy = false;
 	b_gnuplot_open = false;
 	gnuplot_pipe = NULL;
-	
-	calculate_thread_stopped = true;
-	pthread_attr_init(&calculate_thread_attr);
-	int pipe_wr[] = {0, 0};
-	pipe(pipe_wr);
-	calculate_pipe_r = fdopen(pipe_wr[0], "r");
-	calculate_pipe_w = fdopen(pipe_wr[1], "w");
-
 }
 Calculator::~Calculator() {
 	closeGnuplot();
@@ -1530,23 +1511,6 @@ void Calculator::clearBuffers() {
 	}
 }
 void Calculator::abort() {
-	if(calculate_thread_stopped) {
-		b_busy = false;
-	} else {
-		pthread_cancel(calculate_thread);
-		restoreState();
-		stopped_messages_count.clear();
-		stopped_warnings_count.clear();
-		stopped_errors_count.clear();
-		disable_errors_ref = 0;
-		clearBuffers();
-		if(tmp_rpn_mstruct) tmp_rpn_mstruct->unref();
-		tmp_rpn_mstruct = NULL;
-		b_busy = false;
-		pthread_create(&calculate_thread, &calculate_thread_attr, calculate_proc, calculate_pipe_r);
-	}
-}
-void Calculator::abort_this() {
 	restoreState();
 	stopped_messages_count.clear();
 	stopped_warnings_count.clear();
@@ -1556,19 +1520,9 @@ void Calculator::abort_this() {
 	if(tmp_rpn_mstruct) tmp_rpn_mstruct->unref();
 	tmp_rpn_mstruct = NULL;
 	b_busy = false;
-	calculate_thread_stopped = true;
-	pthread_exit(PTHREAD_CANCELED);
 }
 bool Calculator::busy() {
 	return b_busy;
-}
-void Calculator::terminateThreads() {
-	if(!calculate_thread_stopped) {
-		pthread_cancel(calculate_thread);
-	}
-	if(!print_thread_stopped) {
-		pthread_cancel(print_thread);
-	}
 }
 
 string Calculator::localizeExpression(string str) const {
@@ -1707,20 +1661,13 @@ bool Calculator::calculateRPNRegister(size_t index, int msecs, const EvaluationO
 bool Calculator::calculateRPN(MathStructure *mstruct, int command, size_t index, int msecs, const EvaluationOptions &eo) {
 	saveState();
 	b_busy = true;
-	if(calculate_thread_stopped) {
-		pthread_create(&calculate_thread, &calculate_thread_attr, calculate_proc, calculate_pipe_r);
-		calculate_thread_stopped = false;
-	}
 	bool had_msecs = msecs > 0;
 	tmp_evaluationoptions = eo;
 	tmp_proc_command = command;
 	tmp_rpnindex = index;
 	tmp_rpn_mstruct = mstruct;
 	bool b_parse = false;
-	fwrite(&b_parse, sizeof(bool), 1, calculate_pipe_w);
-	void *x = (void*) mstruct;
-	fwrite(&x, sizeof(void*), 1, calculate_pipe_w);
-	fflush(calculate_pipe_w);
+	calculate_proc_noproc(b_parse, mstruct);
 	struct timespec rtime;
 	rtime.tv_sec = 0;
 	rtime.tv_nsec = 1000000;
@@ -1738,10 +1685,6 @@ bool Calculator::calculateRPN(string str, int command, size_t index, int msecs, 
 	MathStructure *mstruct = new MathStructure();
 	saveState();
 	b_busy = true;
-	if(calculate_thread_stopped) {
-		pthread_create(&calculate_thread, &calculate_thread_attr, calculate_proc, calculate_pipe_r);
-		calculate_thread_stopped = false;
-	}
 	bool had_msecs = msecs > 0;
 	expression_to_calculate = str;
 	tmp_evaluationoptions = eo;
@@ -1752,10 +1695,7 @@ bool Calculator::calculateRPN(string str, int command, size_t index, int msecs, 
 	tmp_tostruct = to_struct;
 	tmp_maketodivision = make_to_division;
 	bool b_parse = true;
-	fwrite(&b_parse, sizeof(bool), 1, calculate_pipe_w);
-	void *x = (void*) mstruct;
-	fwrite(&x, sizeof(void*), 1, calculate_pipe_w);
-	fflush(calculate_pipe_w);
+	calculate_proc_noproc(b_parse, mstruct);
 	struct timespec rtime;
 	rtime.tv_sec = 0;
 	rtime.tv_nsec = 1000000;
@@ -2100,10 +2040,6 @@ bool Calculator::calculate(MathStructure *mstruct, string str, int msecs, const 
 	mstruct->set(string(_("calculating...")));
 	saveState();
 	b_busy = true;
-	if(calculate_thread_stopped) {
-		pthread_create(&calculate_thread, &calculate_thread_attr, calculate_proc, calculate_pipe_r);
-		calculate_thread_stopped = false;
-	}
 	bool had_msecs = msecs > 0;
 	expression_to_calculate = str;
 	tmp_evaluationoptions = eo;
@@ -2113,10 +2049,7 @@ bool Calculator::calculate(MathStructure *mstruct, string str, int msecs, const 
 	tmp_tostruct = to_struct;
 	tmp_maketodivision = make_to_division;
 	bool b_parse = true;
-	fwrite(&b_parse, sizeof(bool), 1, calculate_pipe_w);
-	void *x = (void*) mstruct;
-	fwrite(&x, sizeof(void*), 1, calculate_pipe_w);
-	fflush(calculate_pipe_w);
+	calculate_proc_noproc(b_parse, mstruct);
 	struct timespec rtime;
 	rtime.tv_sec = 0;
 	rtime.tv_nsec = 1000000;
