@@ -2887,7 +2887,7 @@ ExpressionItem* Calculator::addExpressionItem(ExpressionItem *item, bool force) 
 			return addVariable((Variable*) item, force);
 		}
 		case TYPE_FUNCTION: {
-			if(item->subtype() == item->subtype() == SUBTYPE_DATA_SET) return addDataSet((DataSet*) item, force);
+			if(item->subtype() == SUBTYPE_DATA_SET) return addDataSet((DataSet*) item, force);
 			else return addFunction((MathFunction*) item, force);
 		}		
 		case TYPE_UNIT: {
