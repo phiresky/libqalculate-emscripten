@@ -13,6 +13,12 @@ vector<const char*> files = {"data/prefixes.xml",
 
 bool inited = false;
 extern "C" {
+const void qalc_list_units() {
+	for(Unit* unit : CALCULATOR->units) {
+		cout << unit->print(false,false) << ":"<<unit->isCurrency()<<endl;
+
+	}
+}
 const void qalc_init() {
 	if(inited) return;
 	new Calculator();
@@ -35,7 +41,7 @@ const char* qalc(const char* inp) {
 }
 }
 
-/*int main() {
+int main() {
 	Calculator *c = new Calculator();
 	for(auto f : files)
 		c->loadDefinitions(f, false);
@@ -44,5 +50,5 @@ const char* qalc(const char* inp) {
 	PrintOptions po;
 	result.format(po);
 	cout << result.print(po) << endl;
-}*/
-
+	qalc_list_units();
+}
