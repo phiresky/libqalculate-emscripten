@@ -1,1 +1,4 @@
-Visit http://qalculate.sourceforge.net/
+## building
+
+./emconfigure
+emmake make -j4

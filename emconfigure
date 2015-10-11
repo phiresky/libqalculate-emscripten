@@ -1,0 +1,1 @@
+emconfigure ./configure CXXFLAGS="-m32 -g" CFLAGS="-m32 -g" --host i386-linux-gnu
