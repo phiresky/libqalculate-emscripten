@@ -87,8 +87,6 @@ dnl  --------------------------------
 dnl | check for neccessary libraries |-----------------------------------------
 dnl  --------------------------------
 
-AC_CHECK_LIB(pthread, pthread_create, [LIBS="$LIBS -lpthread"])
-
 AC_LANG([C++])
 
 PKG_CHECK_MODULES(GLIB, [
@@ -240,7 +238,6 @@ dnl  --------
 
 AC_OUTPUT([
   Makefile
-  src/Makefile
   libqalculate/Makefile
   data/Makefile
   po/Makefile.in
