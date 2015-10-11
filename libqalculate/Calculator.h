@@ -923,19 +923,6 @@ class Calculator {
 	* @returns Url of exchange rates file.
 	*/
 	string getExchangeRatesUrl();
-	/** Download current exchange rates from the Internet to local disc.
-	*
-	* @param timeout Timeout for donwload try (only used by wget)
-	* @param wget_args Extra arguments to pass to wget.
-	* @returns true if operation was successful.
-	*/
-	bool fetchExchangeRates(int timeout, string wget_args);
-	/** Download current exchange rates from the Internet to local disc with default wget arguments.
-	*
-	* @param timeout Timeout for donwload try (only used by wget)
-	* @returns true if operation was successful.
-	*/
-	bool fetchExchangeRates(int timeout = 15);
 	/** Returns true if the exchange rates on local disc is older than one week. */
 	bool checkExchangeRatesDate();
 	//@}
@@ -946,16 +933,6 @@ class Calculator {
 	*
 	* @returns true if gnuplot was found.
 	*/
-	bool canPlot();
-	MathStructure expressionToPlotVector(string expression, const MathStructure &min, const MathStructure &max, int steps, MathStructure *x_vector = NULL, string x_var = "\\x", const ParseOptions &po = default_parse_options);
-	MathStructure expressionToPlotVector(string expression, float min, float max, int steps, MathStructure *x_vector = NULL, string x_var = "\\x", const ParseOptions &po = default_parse_options);
-	MathStructure expressionToPlotVector(string expression, const MathStructure &min, const MathStructure &max, const MathStructure &step, MathStructure *x_vector = NULL, string x_var = "\\x", const ParseOptions &po = default_parse_options);
-	MathStructure expressionToPlotVector(string expression, float min, float max, float step, MathStructure *x_vector = NULL, string x_var = "\\x", const ParseOptions &po = default_parse_options);
-	MathStructure expressionToPlotVector(string expression, const MathStructure &x_vector, string x_var = "\\x", const ParseOptions &po = default_parse_options);
-	bool plotVectors(PlotParameters *param, const vector<MathStructure> &y_vectors, const vector<MathStructure> &x_vectors, vector<PlotDataParameters*> &pdps, bool persistent = false);
-	bool invokeGnuplot(string commands, string commandline_extra = "", bool persistent = false);
-	bool closeGnuplot();
-	bool gnuplotOpen();
 	//@}
 
 	/** @name Functions for global precision */

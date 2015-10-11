@@ -2,6 +2,7 @@
 # src/libqalculate/Makefile.am for qalculate
 #
 
+AM_CXXFLAGS= -std=c++11
 
 lib_LTLIBRARIES = libqalculate.la
 

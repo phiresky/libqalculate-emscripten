@@ -90,7 +90,6 @@ dnl  --------------------------------
 AC_LANG([C++])
 
 PKG_CHECK_MODULES(GLIB, [
-	glib-2.0
 	libxml-2.0 >= 2.3.8
 	])
 AC_SUBST(GLIB_CFLAGS)

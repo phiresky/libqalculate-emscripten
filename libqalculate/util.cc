@@ -15,11 +15,12 @@
 #include <stdarg.h>
 #include "Number.h"
 
-#include <glib.h>
 #include <time.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <pwd.h>
+#include <chrono>
+#include <ctime>
 
 
 bool eqstr::operator()(const char *s1, const char *s2) const {
@@ -42,13 +43,14 @@ string date2s(int year, int month, int day) {
 	str += i2s(day);
 	return str;
 }
-bool s2date(string str, GDate *gtime) {
-/*	if(strptime(str.c_str(), "%x", time) || strptime(str.c_str(), "%Ex", time) || strptime(str.c_str(), "%Y-%m-%d", time) || strptime(str.c_str(), "%m/%d/%Y", time) || strptime(str.c_str(), "%m/%d/%y", time)) {
+using chro = std::chrono::system_clock;
+bool s2date(string str, chro::time_point *gtime) {
+	std::tm time;
+	if(strptime(str.c_str(), "%x", &time) || strptime(str.c_str(), "%Ex", &time) || strptime(str.c_str(), "%Y-%m-%d", &time) || strptime(str.c_str(), "%m/%d/%Y", &time) || strptime(str.c_str(), "%m/%d/%y", &time)) {
+		*gtime = chro::from_time_t(mktime(&time));
 		return true;
-	}*/
-	//char *date_format = nl_langinfo(D_FMT);
-	g_date_set_parse(gtime, str.c_str());
-	return g_date_valid(gtime);
+	}
+	return false;
 }
 
 void now(int &hour, int &min, int &sec) {
@@ -58,217 +60,87 @@ void now(int &hour, int &min, int &sec) {
 	min = lt->tm_min;
 	sec = lt->tm_sec;
 }
-void today(int &year, int &month, int &day) {
-	GDate *gtime = g_date_new();
-	g_date_set_time(gtime, time(NULL));
-	year = g_date_get_year(gtime);
-	month = g_date_get_month(gtime);
-	day = g_date_get_day(gtime);
-	g_date_free(gtime);
+void tm2ints(tm& lt, int &year, int &month, int &day) {
+	year = lt.tm_year + 1900;
+	month = lt.tm_mon + 1;
+	day = lt.tm_mday;
 }
-bool addDays(GDate *gtime, int days) {
-	if(days < 0) g_date_subtract_days(gtime, (guint) -days);
-	else if(days > 0) g_date_add_days(gtime, (guint) days);
-	if(!g_date_valid(gtime)) return false;
+void today(int &year, int &month, int &day) {
+	time_t t = time(NULL);
+	struct tm *lt = localtime(&t);
+	tm2ints(*lt, year, month, day);
+}
+
+chro::time_point ints2date(int year, int month, int day) {
+	tm time;
+	time.tm_year = year - 1900;
+	time.tm_mon = month -1;
+	time.tm_mday = day;
+	return chro::from_time_t(mktime(&time));
+}
+void date2ints(chro::time_point& d, int& year, int& month, int& day) {
+	time_t t = chro::to_time_t(d);
+	tm* lt = localtime(&t);
+	tm2ints(*lt, year, month, day);
+}
+bool addDays(chro::time_point *gtime, int days) {
+	*gtime += chrono::hours(24) * days;
 	return true;
 }
 bool addDays(int &year, int &month, int &day, int days) {
-	GDate *gtime = g_date_new_dmy((GDateDay) day, (GDateMonth) month, (GDateYear) year);
-	if(!addDays(gtime, days)) {
-		g_date_free(gtime); 
-		return false;
-	}
-	year = (int) g_date_year(gtime);
-	month = (int) g_date_month(gtime);
-	day = (int) g_date_day(gtime);
-	g_date_free(gtime);
+	chro::time_point p = ints2date(year,month,day);
+	p += chrono::hours(days*24);
+	date2ints(p, year, month, day);
 	return true;
 }
 string addDays(string str, int days) {
-	GDate *gtime = g_date_new();
-	if(!s2date(str, gtime) || !addDays(gtime, days)) {
-		g_date_free(gtime); 
+	chro::time_point gtime;
+	if(!s2date(str, &gtime) || !addDays(&gtime, days)) {
 		return empty_string;
 	}
-	int y = (int) g_date_year(gtime);
-	int m = (int) g_date_month(gtime);
-	int d = (int) g_date_day(gtime);
-	g_date_free(gtime);
+	int y;
+	int m;
+	int d;
+	date2ints(gtime, y, m, d);
 	return date2s(y, m, d);
 }
-bool addMonths(GDate *gtime, int months) {
-	if(months < 0) g_date_subtract_months(gtime, (guint) -months);
-	else if(months > 0) g_date_add_months(gtime, (guint) months);
-	if(!g_date_valid(gtime)) return false;
-	return true;
+//TODO:these
+bool addMonths(chro::time_point *gtime, int months) {
+	return false;
 }
 bool addMonths(int &year, int &month, int &day, int months) {
-	GDate *gtime = g_date_new_dmy((GDateDay) day, (GDateMonth) month, (GDateYear) year);
-	if(!addMonths(gtime, months)) {
-		g_date_free(gtime); 
-		return false;
-	}
-	year = (int) g_date_year(gtime);
-	month = (int) g_date_month(gtime);
-	day = (int) g_date_day(gtime);
-	g_date_free(gtime);
-	return true;
+	return false;
+	//TODO
 }
 string addMonths(string str, int months) {
-	GDate *gtime = g_date_new();
-	if(!s2date(str, gtime) || !addMonths(gtime, months)) {
-		g_date_free(gtime); 
-		return empty_string;
-	}
-	int y = (int) g_date_year(gtime);
-	int m = (int) g_date_month(gtime);
-	int d = (int) g_date_day(gtime);
-	g_date_free(gtime);
-	return date2s(y, m, d);
+	//TODO
+	return empty_string;
 }
-bool addYears(GDate *gtime, int years) {
-	if(years < 0) g_date_subtract_years(gtime, (guint) -years);
-	else if(years > 0) g_date_add_years(gtime, (guint) years);
-	if(!g_date_valid(gtime)) return false;
-	return true;
+bool addYears(chro::time_point *gtime, int years) {
+	return false;
 }
 bool addYears(int &year, int &month, int &day, int years) {
-	GDate *gtime = g_date_new_dmy((GDateDay) day, (GDateMonth) month, (GDateYear) year);
-	if(!addYears(gtime, years)) {
-		g_date_free(gtime); 
-		return false;
-	}
-	year = (int) g_date_year(gtime);
-	month = (int) g_date_month(gtime);
-	day = (int) g_date_day(gtime);
-	g_date_free(gtime);
-	return true;
+	return false;
 }
 string addYears(string str, int years) {
-	GDate *gtime = g_date_new();
-	if(!s2date(str, gtime) || !addYears(gtime, years)) {
-		g_date_free(gtime); 
-		return empty_string;
-	}
-	int y = (int) g_date_year(gtime);
-	int m = (int) g_date_month(gtime);
-	int d = (int) g_date_day(gtime);
-	g_date_free(gtime);
-	return date2s(y, m, d);
+	return empty_string;
 }
 
 int week(string str, bool start_sunday) {
-	remove_blank_ends(str);
-	GDate *gtime = g_date_new();
-	bool b = false;
-	if(str == _("today") || str == "today") {
-		g_date_set_time(gtime, time(NULL));
-		b = true;
-	} else if(str == _("now") || str == "now") {
-		g_date_set_time(gtime, time(NULL));
-		b = true;
-	} else {
-		b = s2date(str, gtime);
-	}
-	int week = -1;
-	if(b) {
-		if(start_sunday) {
-			week = g_date_get_sunday_week_of_year(gtime);
-		} else {
-			if(g_date_get_month(gtime) == G_DATE_DECEMBER && g_date_get_day(gtime) >= 29 && g_date_get_weekday(gtime) <= g_date_get_day(gtime) - 28) {
-				week = 1;
-			} else {
-				calc_week_1:
-				int day = g_date_get_day_of_year(gtime);
-				g_date_set_day(gtime, 1);
-				g_date_set_month(gtime, G_DATE_JANUARY);
-				int wday = g_date_get_weekday(gtime);
-				day -= (8 - wday);
-				if(wday <= 4) {
-					week = 1;
-				} else {
-					week = 0;
-				}
-				if(day > 0) {
-					day--;
-					week += day / 7 + 1;
-				}
-				if(week == 0) {
-					int year = g_date_get_year(gtime);
-					g_date_set_dmy(gtime, 31, G_DATE_DECEMBER, year - 1);
-					goto calc_week_1;
-				}
-			}
-		}
-	}
-	g_date_free(gtime);
-	return week;
+	return 0;
 }
 int weekday(string str) {
-	remove_blank_ends(str);
-	GDate *gtime = g_date_new();
-	bool b = false;
-	if(str == _("today") || str == "today") {
-		g_date_set_time(gtime, time(NULL));
-		b = true;
-	} else if(str == _("now") || str == "now") {
-		g_date_set_time(gtime, time(NULL));
-		b = true;	
-	} else {
-		b = s2date(str, gtime);
-	}
-	int day = -1;
-	if(b) {
-		day = g_date_get_weekday(gtime);
-	}
-	g_date_free(gtime);
-	return day;
+	return 0;
 }
 int yearday(string str) {
-	remove_blank_ends(str);
-	GDate *gtime = g_date_new();
-	bool b = false;
-	if(str == _("today") || str == "today") {
-		g_date_set_time(gtime, time(NULL));
-		b = true;
-	} else if(str == _("now") || str == "now") {
-		g_date_set_time(gtime, time(NULL));
-		b = true;
-	} else {
-		b = s2date(str, gtime);
-	}
-	int day = -1;
-	if(b) {
-		day = g_date_get_day_of_year(gtime);
-	}
-	g_date_free(gtime);
-	return day;
+	return 0;
 }
 
 bool s2date(string str, int &year, int &month, int &day) {
-	//struct tm time;
-	remove_blank_ends(str);
-	if(str == _("today") || str == "today") {
-		today(year, month, day);
-		return true;
-	} else if(str == _("now") || str == "now") {
-		today(year, month, day);
-		return true;
-	}
-	GDate *gtime = g_date_new();
-	bool b = s2date(str, gtime);
-	if(b) {
-/*		year = time.tm_year + 1900;
-		month = time.tm_mon + 1;
-		day = time.tm_mday;	*/
-		year = g_date_get_year(gtime);
-		month = g_date_get_month(gtime);
-		day = g_date_get_day(gtime);
-		g_date_free(gtime);
-		return true;
-	}
-	g_date_free(gtime);
-	return false;
+	chro::time_point t;
+	if(!s2date(str, &t)) return false;
+	date2ints(t, year, month, day);
+	return true;
 }
 bool isLeapYear(int year) {
 	return year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
@@ -719,50 +591,13 @@ bool text_length_is_one(const string &str) {
 	return true;
 }
 
+bool insens_comp_char (char c1, char c2) { return std::tolower(c1)<std::tolower(c2);}
 bool equalsIgnoreCase(const string &str1, const string &str2) {
-	if(str1.length() != str2.length()) return false;
-	for(size_t i = 0; i < str1.length(); i++) {
-		if(str1[i] < 0 && i + 1 < str1.length()) {
-			if(str2[i] >= 0) return false;
-			int i2 = 1;
-			while(i2 + i < str1.length() && str1[i2 + i] < 0) {
-				if(str2[i2 + i] >= 0) return false;
-				i2++;
-			}
-			gchar *gstr1 = g_utf8_strdown(str1.c_str() + (sizeof(char) * i), i2);
-			gchar *gstr2 = g_utf8_strdown(str2.c_str() + (sizeof(char) * i), i2);
-			if(strcmp(gstr1, gstr2) != 0) return false;
-			g_free(gstr1);
-			g_free(gstr2);
-			i += i2 - 1;
-		} else if(str1[i] != str2[i] && !((str1[i] >= 'a' && str1[i] <= 'z') && str1[i] - 32 == str2[i]) && !((str1[i] <= 'Z' && str1[i] >= 'A') && str1[i] + 32 == str2[i])) {
-			return false;
-		}
-	}
-	return true;
+	return std::lexicographical_compare(str1.begin(), str1.end(), str2.begin(), str2.end(), insens_comp_char);
 }
 
 bool equalsIgnoreCase(const string &str1, const char *str2) {
-	if(str1.length() != strlen(str2)) return false;
-	for(size_t i = 0; i < str1.length(); i++) {
-		if(str1[i] < 0 && i + 1 < str1.length()) {
-			if(str2[i] >= 0) return false;
-			int i2 = 1;
-			while(i2 + i < str1.length() && str1[i2 + i] < 0) {
-				if(str2[i2 + i] >= 0) return false;
-				i2++;
-			}
-			gchar *gstr1 = g_utf8_strdown(str1.c_str() + (sizeof(char) * i), i2);
-			gchar *gstr2 = g_utf8_strdown(str2 + (sizeof(char) * i), i2);
-			if(strcmp(gstr1, gstr2) != 0) return false;
-			g_free(gstr1);
-			g_free(gstr2);
-			i += i2 - 1;
-		} else if(str1[i] != str2[i] && !((str1[i] >= 'a' && str1[i] <= 'z') && str1[i] - 32 == str2[i]) && !((str1[i] <= 'Z' && str1[i] >= 'A') && str1[i] + 32 == str2[i])) {
-			return false;
-		}
-	}
-	return true;
+	return equalsIgnoreCase(str1, string(str2));
 }
 
 void parse_qalculate_version(string qalculate_version, int *qalculate_version_numbers) {
